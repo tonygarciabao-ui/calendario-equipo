@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipo · Calendario</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#EDEAE4;--surf:#F6F4F1;--surf2:#EDEBE7;
+  --border:#D9D5CE;--border2:#C9C4BC;
+  --ink:#1C1A17;--ink2:#6B6560;--ink3:#A09890;
+  --r:10px;--rs:6px;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 12px rgba(0,0,0,.05);
+  --hol-bg:#E8F5EE;--hol-ink:#1A7A42;
+  --wknd-bg:#F0EDE8;--wknd-ink:#B8B0A8;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px}
+button{font-family:inherit;cursor:pointer}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* Top nav */
+.topnav{background:var(--ink);display:flex;align-items:center;padding:0 24px;height:52px;flex-shrink:0;gap:0;border-bottom:1px solid #333}
+.brand{font-size:14px;font-weight:600;color:#fff;margin-right:28px;white-space:nowrap;letter-spacing:-.2px}
+.brand span{color:#666;font-weight:400}
+.nav-tabs{display:flex;gap:2px}
+.nav-tab{padding:6px 16px;border-radius:var(--rs);border:none;background:none;color:#888;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+.nav-tab:hover{color:#ccc;background:rgba(255,255,255,.06)}
+.nav-tab.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.year-nav{display:flex;align-items:center;gap:8px}
+.year-nav button{background:rgba(255,255,255,.08);border:1px solid #444;border-radius:6px;width:26px;height:26px;color:#aaa;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.year-nav button:hover{background:rgba(255,255,255,.18);color:#fff}
+.year-lbl{font-family:'DM Mono',monospace;font-size:14px;color:#fff;min-width:36px;text-align:center}
+
+/* Sync status */
+.sync-badge{display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #444;color:#888;transition:all .3s}
+.sync-badge.syncing{color:#f59e0b;border-color:#f59e0b44}
+.sync-badge.synced{color:#10b981;border-color:#10b98144}
+.sync-badge.error{color:#ef4444;border-color:#ef444444}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sync-badge.syncing .sync-dot{animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Hint bar */
+.hintbar{background:var(--surf);border-bottom:1px solid var(--border);padding:7px 24px;font-size:12px;color:var(--ink3);display:flex;align-items:center;gap:8px;flex-shrink:0;min-height:34px}
+
+/* Body */
+.body{display:flex;flex:1;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:220px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:16px 14px 20px;gap:22px}
+.sb-ttl{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.plist{display:flex;flex-direction:column;gap:3px}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--rs);border:1px solid transparent;cursor:pointer;transition:all .15s;user-select:none}
+.prow:hover{background:var(--surf2)}
+.prow.active{border-color:var(--border);background:var(--surf2)}
+.av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.pname{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pcnt{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink3);white-space:nowrap}
+.mpills{display:flex;gap:4px;margin-top:2px;padding:0 8px 4px}
+.mpill{flex:1;font-size:10px;font-weight:600;padding:4px 0;border-radius:4px;border:1px solid var(--border);background:var(--surf);color:var(--ink3);text-align:center;cursor:pointer;transition:all .15s}
+.mpill:hover{background:var(--surf2)}
+.mpill.on{color:#fff}
+
+/* Summary */
+.scards{display:flex;flex-direction:column;gap:6px}
+.scard{background:var(--surf2);border-radius:var(--rs);padding:10px 10px 8px}
+.scard-name{font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.srows{display:flex;gap:8px}
+.sstat{flex:1;text-align:center}
+.sval{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;line-height:1}
+.slbl{font-size:9px;color:var(--ink3);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+
+/* Legend */
+.leg-items{display:flex;flex-direction:column;gap:7px}
+.leg-row{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink2)}
+.leg-circ{width:14px;height:14px;border-radius:50%;background:var(--ink3);flex-shrink:0}
+.leg-diam{width:10px;height:10px;background:var(--ink3);transform:rotate(45deg);border-radius:2px;flex-shrink:0}
+.leg-hol{width:14px;height:14px;border-radius:3px;background:var(--hol-ink);flex-shrink:0}
+.leg-we{width:14px;height:14px;border-radius:3px;background:var(--wknd-ink);opacity:.5;flex-shrink:0}
+
+/* Main */
+.main{flex:1;overflow-y:auto;padding:22px 26px}
+.cal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.mcard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.mttl{padding:9px 12px;font-size:12px;font-weight:600;letter-spacing:.3px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.mmeta{font-size:10px;font-weight:400;color:var(--ink3);font-family:'DM Mono',monospace}
+.dnames{display:grid;grid-template-columns:repeat(7,1fr);background:var(--surf2);border-bottom:1px solid var(--border)}
+.dn{font-size:9px;font-weight:600;text-align:center;padding:4px 0;color:var(--ink3);letter-spacing:.3px}
+.dn.we{color:var(--border2)}
+.dgrid{display:grid;grid-template-columns:repeat(7,1fr)}
+.day{min-height:52px;padding:4px 2px 3px;display:flex;flex-direction:column;align-items:center;border-bottom:1px solid var(--border);border-right:1px solid var(--border);cursor:pointer;transition:background .1s;gap:2px;user-select:none;position:relative}
+.day:nth-child(7n){border-right:none}
+.day.out{opacity:.15;pointer-events:none}
+.day.we{background:var(--wknd-bg)}
+.day.hol{background:var(--hol-bg)}
+.day:hover:not(.out){filter:brightness(.95)}
+.dnum{font-size:10px;font-weight:500;color:var(--ink2);line-height:1}
+.day.we .dnum{color:var(--wknd-ink)}
+.day.hol .dnum{color:var(--hol-ink);font-weight:700}
+.hlbl{font-size:7px;color:var(--hol-ink);text-align:center;line-height:1.1;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.badges{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;padding:0 2px}
+.badge{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:7.5px;font-weight:700;color:#fff;letter-spacing:-.3px;flex-shrink:0}
+.badge.vac{border-radius:50%}
+.badge.guard{border-radius:3px;transform:rotate(45deg)}
+.badge.guard span{display:inline-block;transform:rotate(-45deg)}
+
+/* Config */
+.cfg-wrap{max-width:680px;display:flex;flex-direction:column;gap:20px}
+.ccard{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.ccard-hdr{padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.ccard-meta{font-size:11px;font-weight:400;color:var(--ink3)}
+.ccard-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.cfg-prow{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surf2);border-radius:var(--rs)}
+.cfg-prow .av{width:30px;height:30px;font-size:11px}
+.name-inp{font-family:'DM Sans',sans-serif;font-size:13px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surf);color:var(--ink);flex:1}
+.name-inp:focus{outline:none;border-color:var(--ink2)}
+.del-btn{background:none;border:1px solid var(--border);border-radius:var(--rs);width:28px;height:28px;color:var(--ink3);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.del-btn:hover{border-color:#e8446a;color:#e8446a;background:#fde8ed}
+.add-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.add-form input[type=text]{font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surf);color:var(--ink);flex:1;min-width:120px}
+.add-form input:focus{outline:none;border-color:var(--ink2)}
+.swatches{display:flex;gap:4px;flex-wrap:wrap}
+.sw{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s;flex-shrink:0}
+.sw:hover{transform:scale(1.15)}
+.sw.sel{border-color:var(--ink)}
+.btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surf);color:var(--ink);cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surf2)}
+.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.pri:hover{background:#333}
+.btn.sm{padding:5px 10px;font-size:11px}
+.sec-sep{border-top:1px solid var(--border);padding-top:12px;margin-top:2px}
+.sec-lbl{font-size:11px;font-weight:600;color:var(--ink3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.hol-list{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto}
+.hrow{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--hol-bg);border-radius:var(--rs)}
+.hdate{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--hol-ink);flex-shrink:0}
+.hname{flex:1;font-size:12px;color:var(--ink2)}
+.hadd{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hadd input[type=date],.hadd input[type=text]{font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surf);color:var(--ink)}
+.hadd input[type=date]{flex-shrink:0}
+.hadd input[type=text]{flex:1;min-width:130px}
+.hadd input:focus{outline:none;border-color:var(--ink2)}
+.info-txt{font-size:13px;color:var(--ink2);line-height:1.65}
+
+/* Loading overlay */
+.loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;transition:opacity .4s}
+.loading.hidden{opacity:0;pointer-events:none}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-size:13px;color:var(--ink2)}
+
+.tip{position:fixed;background:var(--ink);color:#fff;font-size:11px;padding:6px 10px;border-radius:var(--rs);pointer-events:none;z-index:9999;display:none;white-space:pre-line;line-height:1.5;box-shadow:var(--shadow)}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-txt">Conectando con Firebase…</div>
+</div>
+
+<div class="app">
+<nav class="topnav">
+  <div class="brand">Equipo <span>/ Calendario</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-cal"    onclick="setTab('cal')">Calendario</button>
+    <button class="nav-tab"        id="tab-cfg"    onclick="setTab('cfg')">Configuración</button>
+  </div>
+  <div class="nav-right">
+    <div class="year-nav">
+      <button onclick="changeYear(-1)">‹</button>
+      <span class="year-lbl" id="ylbl">2026</span>
+      <button onclick="changeYear(1)">›</button>
+    </div>
+    <div class="sync-badge" id="sync-badge">
+      <div class="sync-dot"></div>
+      <span id="sync-txt">Conectando</span>
+    </div>
+  </div>
+</nav>
+
+<div class="hintbar" id="hintbar">
+  <span id="hint">Selecciona una persona y el modo para marcar días</span>
+</div>
+
+<div class="body">
+  <aside class="sidebar">
+    <div>
+      <div class="sb-ttl">Personas</div>
+      <div class="plist" id="plist"></div>
+    </div>
+    <div>
+      <div class="sb-ttl">Resumen</div>
+      <div class="scards" id="scards"></div>
+    </div>
+    <div>
+      <div class="sb-ttl">Leyenda</div>
+      <div class="leg-items">
+        <div class="leg-row"><div class="leg-circ"></div>Vacaciones</div>
+        <div class="leg-row"><div class="leg-diam"></div>Guardia</div>
+        <div class="leg-row"><div class="leg-hol"></div>Festivo</div>
+        <div class="leg-row"><div class="leg-we"></div>Fin de semana</div>
+      </div>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp }                          from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs }
+                                                  from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+// ── Firebase config ───────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBb7rAjWzXwWpLO4D-_GIf4TWBWyKwA1GM",
+  authDomain:        "calendario-equipo-1772d.firebaseapp.com",
+  projectId:         "calendario-equipo-1772d",
+  storageBucket:     "calendario-equipo-1772d.firebasestorage.app",
+  messagingSenderId: "733066238907",
+  appId:             "1:733066238907:web:02594abb7a4104150e429e"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+// ── State ─────────────────────────────────────────────────────────
+let year=2026, tab='cal', activeP=null, activeMode=null;
+let isDrag=false, dragAct=null;
+let saveTimer=null;
+
+const PAL=[
+  {id:'c0',color:'#E8446A',light:'#FDE8ED'},
+  {id:'c1',color:'#E8920A',light:'#FEF3E0'},
+  {id:'c2',color:'#0EA86E',light:'#E0F7EE'},
+  {id:'c3',color:'#2878D6',light:'#E3EFFE'},
+  {id:'c4',color:'#7C5FD4',light:'#EEEDFE'},
+  {id:'c5',color:'#D44A8F',light:'#FCE8F3'},
+  {id:'c6',color:'#2BA0B0',light:'#E0F5F8'},
+  {id:'c7',color:'#C45C1A',light:'#FDEEE4'},
+];
+
+let persons=[];
+let holidays={};
+let selColor=PAL[2].id;
+let isRemoteUpdate=false; // flag to avoid echo saves
+
+// ── Utils ─────────────────────────────────────────────────────────
+const MN=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DS=['L','M','X','J','V','S','D'];
+function dk(y,m,d){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function dim(y,m){return new Date(y,m,0).getDate();}
+function dow1(y,m){let d=new Date(y,m-1,1).getDay();return d===0?6:d-1;}
+function ini(n){const p=n.trim().split(/\s+/);return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():n.substring(0,2).toUpperCase();}
+function wd(y,m){let c=0,nd=dim(y,m);for(let d=1;d<=nd;d++){const dow=new Date(y,m-1,d).getDay();if(dow!==0&&dow!==6&&!holidays[dk(y,m,d)])c++;}return c;}
+function isHol(k){return !!holidays[k];}
+function isWE(k){const d=new Date(k),w=d.getDay();return w===0||w===6;}
+
+// ── Sync status ───────────────────────────────────────────────────
+function setSyncStatus(s, txt){
+  const el=document.getElementById('sync-badge');
+  const txtel=document.getElementById('sync-txt');
+  el.className='sync-badge '+s;
+  txtel.textContent=txt;
+}
+
+// ── Firebase: load + realtime ─────────────────────────────────────
+function yearDocId(y){ return `year-${y}`; }
+
+function serializeState(){
+  return {
+    persons: persons.map(p=>({...p, vac:[...p.vac], guard:[...p.guard]})),
+    holidays,
+    updatedAt: Date.now()
+  };
+}
+
+function deserializeState(data){
+  if(!data) return;
+  isRemoteUpdate = true;
+  if(data.persons){
+    persons = data.persons.map(p=>({...p, vac:new Set(p.vac||[]), guard:new Set(p.guard||[])}));
+  }
+  if(data.holidays) holidays = data.holidays;
+  isRemoteUpdate = false;
+}
+
+async function loadYear(y){
+  setSyncStatus('syncing','Cargando…');
+  try {
+    const ref = doc(db, 'calendars', yearDocId(y));
+    const snap = await getDoc(ref);
+    if(snap.exists()){
+      deserializeState(snap.data());
+    } else {
+      // New year — start empty, keep persons config from previous
+      holidays = defaultHolidays(y);
+      if(persons.length===0){
+        persons=[
+          {id:'p0',name:'Ruth', color:'#E8446A',light:'#FDE8ED',vac:new Set(),guard:new Set()},
+          {id:'p1',name:'David',color:'#0EA86E',light:'#E0F7EE',vac:new Set(),guard:new Set()},
+        ];
+      } else {
+        // Keep persons but clear days for new year
+        persons = persons.map(p=>({...p,vac:new Set(),guard:new Set()}));
+      }
+    }
+    subscribeYear(y);
+    setSyncStatus('synced','Sincronizado');
+  } catch(e){
+    console.error(e);
+    setSyncStatus('error','Sin conexión');
+  }
+  document.getElementById('loading').classList.add('hidden');
+  render();
+}
+
+let unsubscribe = null;
+function subscribeYear(y){
+  if(unsubscribe) unsubscribe();
+  const ref = doc(db, 'calendars', yearDocId(y));
+  unsubscribe = onSnapshot(ref, snap=>{
+    if(!snap.exists()) return;
+    const data = snap.data();
+    // Ignore if we just saved (avoid echo)
+    if(data.updatedAt && data.updatedAt === window.__lastSave) return;
+    deserializeState(data);
+    render();
+    setSyncStatus('synced','Sincronizado');
+  }, err=>{
+    setSyncStatus('error','Sin conexión');
+  });
+}
+
+function scheduleSave(){
+  if(isRemoteUpdate) return;
+  setSyncStatus('syncing','Guardando…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>saveNow(), 800);
+}
+
+async function saveNow(){
+  try {
+    const state = serializeState();
+    window.__lastSave = state.updatedAt;
+    await setDoc(doc(db,'calendars',yearDocId(year)), state);
+    setSyncStatus('synced','Sincronizado');
+  } catch(e){
+    setSyncStatus('error','Error al guardar');
+    console.error(e);
+  }
+}
+
+function defaultHolidays(y){
+  return {
+    [`${y}-01-01`]:'Año Nuevo',[`${y}-01-06`]:'Epifanía',
+    [`${y}-02-17`]:'Carnaval',[`${y}-03-19`]:'San José',
+    [`${y}-04-02`]:'J. Santo',[`${y}-04-03`]:'V. Santa',
+    [`${y}-05-01`]:'Trabajo',[`${y}-06-24`]:'San Juan',
+    [`${y}-07-25`]:'Santiago',[`${y}-08-15`]:'Asunción',
+    [`${y}-10-07`]:'Rosario',[`${y}-10-12`]:'Hispanidad',
+    [`${y}-12-08`]:'Inmaculada',[`${y}-12-24`]:'Cierre HR',
+    [`${y}-12-25`]:'Navidad',[`${y}-12-31`]:'Cierre HR',
+  };
+}
+
+// ── Hint ──────────────────────────────────────────────────────────
+function updateHint(){
+  const el=document.getElementById('hint');
+  if(!activeP||!activeMode){
+    el.innerHTML='Selecciona una persona y el modo <strong>Vacaciones</strong> o <strong>Guardia</strong> para marcar días';
+    return;
+  }
+  const p=persons.find(x=>x.id===activeP);if(!p)return;
+  const shape=activeMode==='vac'
+    ?`<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${p.color};vertical-align:middle;margin:0 3px"></span>`
+    :`<span style="display:inline-block;width:10px;height:10px;background:${p.color};transform:rotate(45deg);border-radius:2px;vertical-align:middle;margin:0 5px"></span>`;
+  el.innerHTML=`<strong style="color:${p.color}">${p.name}</strong>&ensp;${shape}&ensp;Marcando: <strong>${activeMode==='vac'?'Vacaciones':'Guardia'}</strong>&ensp;—&ensp;Clic en un día · Arrastra para varios`;
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────
+function renderSidebar(){
+  const pl=document.getElementById('plist');
+  pl.innerHTML='';
+  persons.forEach(p=>{
+    const isAct=activeP===p.id;
+    const row=document.createElement('div');
+    row.className='prow'+(isAct?' active':'');
+    row.innerHTML=`<div class="av" style="background:${p.color}">${ini(p.name)}</div><span class="pname">${p.name}</span><span class="pcnt">${p.vac.size}v ${p.guard.size}g</span>`;
+    row.onclick=()=>{activeP=p.id;if(!activeMode)activeMode='vac';renderSidebar();updateHint();};
+    pl.appendChild(row);
+    if(isAct){
+      const pills=document.createElement('div');pills.className='mpills';
+      ['vac','guard'].forEach(m=>{
+        const pill=document.createElement('button');
+        pill.className='mpill'+(activeMode===m?' on':'');
+        if(activeMode===m){pill.style.background=p.color;pill.style.borderColor=p.color;}
+        pill.textContent=m==='vac'?'● Vacaciones':'◆ Guardia';
+        pill.onclick=e=>{e.stopPropagation();activeMode=m;renderSidebar();updateHint();};
+        pills.appendChild(pill);
+      });
+      pl.appendChild(pills);
+    }
+  });
+
+  const sc=document.getElementById('scards');sc.innerHTML='';
+  persons.forEach(p=>{
+    const c=document.createElement('div');c.className='scard';
+    c.innerHTML=`<div class="scard-name"><div class="sdot" style="background:${p.color}"></div>${p.name}</div><div class="srows"><div class="sstat"><div class="sval" style="color:${p.color}">${p.vac.size}</div><div class="slbl">Vacac.</div></div><div class="sstat"><div class="sval" style="color:${p.color}">${p.guard.size}</div><div class="slbl">Guardias</div></div></div>`;
+    sc.appendChild(c);
+  });
+}
+
+// ── Calendar ──────────────────────────────────────────────────────
+function buildMonth(m){
+  const card=document.createElement('div');card.className='mcard';
+  card.innerHTML=`<div class="mttl">${MN[m-1].toUpperCase()}<span class="mmeta">${wd(year,m)} lab.</span></div><div class="dnames">${DS.map((d,i)=>`<div class="dn${i>=5?' we':''}">${d}</div>`).join('')}</div><div class="dgrid" id="g${m}"></div>`;
+  const grid=card.querySelector(`#g${m}`);
+  const s0=dow1(year,m),nd=dim(year,m),tot=Math.ceil((s0+nd)/7)*7;
+  for(let i=0;i<tot;i++){
+    const day=i-s0+1,dow=i%7;
+    const cell=document.createElement('div');
+    if(day<1||day>nd){cell.className='day out';grid.appendChild(cell);continue;}
+    const key=dk(year,m,day);
+    const ih=isHol(key),iw=dow>=5;
+    const vp=persons.filter(p=>p.vac.has(key));
+    const gp=persons.filter(p=>p.guard.has(key));
+    let cls='day';if(iw)cls+=' we';if(ih)cls+=' hol';
+    cell.className=cls;
+    const all=[...new Set([...vp,...gp])];
+    if(!ih&&!iw&&all.length===1)cell.style.background=all[0].light;
+    const numEl=document.createElement('div');numEl.className='dnum';numEl.textContent=day;cell.appendChild(numEl);
+    if(ih){const hl=document.createElement('div');hl.className='hlbl';hl.textContent=holidays[key];cell.appendChild(hl);}
+    if(vp.length||gp.length){
+      const bd=document.createElement('div');bd.className='badges';
+      vp.forEach(p=>{const b=document.createElement('div');b.className='badge vac';b.style.background=p.color;b.textContent=ini(p.name);b.title=p.name+' · Vacaciones';bd.appendChild(b);});
+      gp.forEach(p=>{const b=document.createElement('div');b.className='badge guard';b.style.background=p.color;b.title=p.name+' · Guardia';const s=document.createElement('span');s.textContent=ini(p.name);b.appendChild(s);bd.appendChild(b);});
+      cell.appendChild(bd);
+    }
+    cell.addEventListener('mousedown',e=>{
+      if(!activeP||!activeMode)return;
+      const p=persons.find(x=>x.id===activeP);if(!p)return;
+      if(activeMode==='vac'&&(isHol(key)||isWE(key)))return;
+      isDrag=true;const set=activeMode==='vac'?p.vac:p.guard;
+      dragAct=set.has(key)?'remove':'add';
+      if(dragAct==='add')set.add(key);else set.delete(key);
+      renderCalendar();renderSidebar();scheduleSave();e.preventDefault();
+    });
+    cell.addEventListener('mouseenter',()=>{
+      if(!isDrag||!activeP||!activeMode)return;
+      const p=persons.find(x=>x.id===activeP);if(!p)return;
+      if(activeMode==='vac'&&(isHol(key)||isWE(key)))return;
+      const set=activeMode==='vac'?p.vac:p.guard;
+      if(dragAct==='add')set.add(key);else set.delete(key);
+      renderCalendar();renderSidebar();scheduleSave();
+    });
+    cell.addEventListener('mousemove',e=>{
+      const tip=document.getElementById('tip');
+      let txt=`${day} ${MN[m-1]} ${year}`;
+      if(ih)txt+=`\n🎉 ${holidays[key]}`;
+      if(vp.length)txt+='\n'+vp.map(p=>`${ini(p.name)} ${p.name} · Vacaciones`).join('\n');
+      if(gp.length)txt+='\n'+gp.map(p=>`${ini(p.name)} ${p.name} · Guardia`).join('\n');
+      tip.textContent=txt;tip.style.display='block';
+      tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-44)+'px';
+    });
+    cell.addEventListener('mouseleave',()=>{document.getElementById('tip').style.display='none';});
+    grid.appendChild(cell);
+  }
+  return card;
+}
+
+function renderCalendar(){
+  const g=document.getElementById('cgrid');if(!g)return;
+  g.innerHTML='';for(let m=1;m<=12;m++)g.appendChild(buildMonth(m));
+}
+
+// ── Config ────────────────────────────────────────────────────────
+function renderConfig(){
+  const main=document.getElementById('main');
+  main.innerHTML=`<div class="cfg-wrap">
+  <div class="ccard">
+    <div class="ccard-hdr">Personas del equipo<span class="ccard-meta">${persons.length} persona${persons.length!==1?'s':''}</span></div>
+    <div class="ccard-body">
+      <div id="cfgp"></div>
+      <div class="sec-sep">
+        <div class="sec-lbl">Añadir persona</div>
+        <div class="add-form">
+          <input type="text" id="nname" placeholder="Nombre..." maxlength="24">
+          <div class="swatches" id="sws"></div>
+          <button class="btn pri sm" onclick="window._addPerson()">+ Añadir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ccard">
+    <div class="ccard-hdr">Festivos<span class="ccard-meta">${Object.keys(holidays).length} días</span></div>
+    <div class="ccard-body">
+      <div class="hol-list" id="cfgh"></div>
+      <div class="sec-sep">
+        <div class="sec-lbl">Añadir festivo</div>
+        <div class="hadd">
+          <input type="date" id="hdate" value="${year}-06-01">
+          <input type="text" id="hname" placeholder="Nombre del festivo...">
+          <button class="btn pri sm" onclick="window._addHoliday()">+ Añadir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ccard">
+    <div class="ccard-hdr">Sincronización en la nube</div>
+    <div class="ccard-body">
+      <p class="info-txt">Los datos se guardan automáticamente en <strong>Firebase</strong> cada vez que marcáis un día. Cualquier persona con acceso a este archivo verá los cambios al momento.</p>
+      <p class="info-txt">Los datos de cada año se guardan por separado — podéis consultar años anteriores cambiando el año en la barra superior y todo estará tal como lo dejasteis.</p>
+      <p class="info-txt" style="color:var(--ink3);font-size:12px">Proyecto Firebase: <code style="font-family:'DM Mono',monospace">calendario-equipo-1772d</code></p>
+    </div>
+  </div>
+  </div>`;
+  renderCfgP();renderCfgH();renderSws();
+}
+
+function renderCfgP(){
+  const el=document.getElementById('cfgp');if(!el)return;el.innerHTML='';
+  persons.forEach(p=>{
+    const row=document.createElement('div');row.className='cfg-prow';
+    row.innerHTML=`<div class="av" style="background:${p.color}">${ini(p.name)}</div><input class="name-inp" value="${p.name}" onchange="window._renamePerson('${p.id}',this.value)"><div style="font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace;white-space:nowrap">${p.vac.size}v · ${p.guard.size}g</div><button class="del-btn" onclick="window._delPerson('${p.id}')">×</button>`;
+    el.appendChild(row);
+  });
+}
+
+function renderCfgH(){
+  const el=document.getElementById('cfgh');if(!el)return;el.innerHTML='';
+  Object.entries(holidays).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,name])=>{
+    const [,m,d]=date.split('-');
+    const row=document.createElement('div');row.className='hrow';
+    row.innerHTML=`<span class="hdate">${d}/${m}</span><span class="hname">${name}</span><button class="del-btn" onclick="window._delHoliday('${date}')">×</button>`;
+    el.appendChild(row);
+  });
+}
+
+function renderSws(){
+  const el=document.getElementById('sws');if(!el)return;el.innerHTML='';
+  PAL.forEach(p=>{
+    const s=document.createElement('div');s.className='sw'+(selColor===p.id?' sel':'');
+    s.style.background=p.color;s.onclick=()=>{selColor=p.id;renderSws();};el.appendChild(s);
+  });
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────
+window._addPerson=()=>{
+  const name=document.getElementById('nname').value.trim();if(!name)return;
+  const pal=PAL.find(p=>p.id===selColor)||PAL[0];
+  persons.push({id:'p'+Date.now(),name,color:pal.color,light:pal.light,vac:new Set(),guard:new Set()});
+  document.getElementById('nname').value='';
+  selColor=PAL[persons.length%PAL.length].id;
+  scheduleSave();render();
+};
+window._delPerson=(id)=>{
+  if(!confirm('¿Eliminar esta persona y todos sus días marcados?'))return;
+  persons=persons.filter(p=>p.id!==id);
+  if(activeP===id){activeP=null;activeMode=null;}
+  scheduleSave();render();
+};
+window._renamePerson=(id,name)=>{
+  const p=persons.find(x=>x.id===id);if(p&&name.trim())p.name=name.trim();
+  scheduleSave();renderSidebar();
+};
+window._addHoliday=()=>{
+  const date=document.getElementById('hdate').value;
+  const name=document.getElementById('hname').value.trim()||'Festivo';
+  if(!date)return;holidays[date]=name;
+  document.getElementById('hname').value='';
+  scheduleSave();render();
+};
+window._delHoliday=(date)=>{
+  delete holidays[date];scheduleSave();render();
+};
+
+// ── Tab / Year ────────────────────────────────────────────────────
+window.setTab=(t)=>{
+  tab=t;
+  document.getElementById('tab-cal').className='nav-tab'+(t==='cal'?' active':'');
+  document.getElementById('tab-cfg').className='nav-tab'+(t==='cfg'?' active':'');
+  document.getElementById('hintbar').style.display=t==='cal'?'flex':'none';
+  render();
+};
+window.changeYear=(d)=>{
+  year+=d;
+  document.getElementById('ylbl').textContent=year;
+  loadYear(year);
+};
+
+// ── Render ────────────────────────────────────────────────────────
+function render(){
+  renderSidebar();updateHint();
+  const main=document.getElementById('main');
+  if(tab==='cal'){
+    main.innerHTML='<div class="cal-grid" id="cgrid"></div>';
+    renderCalendar();
+  } else {
+    renderConfig();
+  }
+}
+
+document.addEventListener('mouseup',()=>{isDrag=false;dragAct=null;});
+
+// ── Init ──────────────────────────────────────────────────────────
+loadYear(year);
+
+</script>
+</body>
+</html>
