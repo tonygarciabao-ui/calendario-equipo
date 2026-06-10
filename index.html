@@ -445,6 +445,8 @@ window._logout=()=>{
   document.getElementById('session-name').textContent='—';
   showLogin();
 };
+
+function defaultHolidays(y){
   return {
     [`${y}-01-01`]:'Año Nuevo',[`${y}-01-06`]:'Epifanía',
     [`${y}-02-17`]:'Carnaval',[`${y}-03-19`]:'San José',
