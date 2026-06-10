@@ -175,10 +175,47 @@ button{font-family:inherit;cursor:pointer}
 .spinner{width:30px;height:30px;border:3px solid #484A56;border-top-color:#818CF8;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-txt{font-size:13px;color:var(--ink2)}
+
+/* Login overlay */
+.login-overlay{position:fixed;inset:0;background:#1A1D2E;display:flex;align-items:center;justify-content:center;z-index:998;transition:opacity .4s}
+.login-overlay.hidden{opacity:0;pointer-events:none;display:none}
+.login-box{background:#2A2C36;border:1px solid #484A56;border-radius:14px;padding:32px 28px 28px;width:340px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.login-brand{display:flex;align-items:center;gap:10px;margin-bottom:24px;justify-content:center}
+.login-title{font-size:18px;font-weight:700;color:#FFF;text-align:center;margin-bottom:6px;letter-spacing:-.3px}
+.login-sub{font-size:12px;color:var(--ink3);text-align:center;margin-bottom:20px}
+.login-list{display:flex;flex-direction:column;gap:7px;margin-bottom:8px}
+.login-person{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:8px;border:1px solid var(--border);background:#30323C;cursor:pointer;transition:all .15s}
+.login-person:hover{border-color:#6366F1;background:#363840}
+.login-person .av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.login-person .lp-name{font-size:14px;font-weight:600;color:var(--ink);flex:1}
+.login-person .lp-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:#6366F1;color:#fff;letter-spacing:.5px}
+.login-loading{font-size:12px;color:var(--ink3);text-align:center;padding:16px 0}
+.session-bar{display:flex;align-items:center;gap:8px;padding:3px 10px;border-radius:20px;border:1px solid #686A80;background:#2A2D42;cursor:pointer;transition:all .15s}
+.session-bar:hover{border-color:#6366F1}
+.session-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0}
+.session-name{font-size:11px;font-weight:600;color:#D8DCE8}
+.session-out{font-size:10px;color:var(--ink3);margin-left:2px}
 .tip{position:fixed;background:#1A1D2E;color:#fff;font-size:11px;padding:6px 10px;border-radius:var(--rs);pointer-events:none;z-index:9999;display:none;white-space:pre-line;line-height:1.5;box-shadow:var(--shadow);border:1px solid #484A56}
 </style>
 </head>
 <body>
+
+<div class="login-overlay hidden" id="login-overlay">
+  <div class="login-box">
+    <div class="login-brand">
+      <div class="brand-circles">
+        <div class="brand-circle" style="background:#E8446A;border:2px solid #1A1D2E"></div>
+        <div class="brand-circle" style="background:#0EA86E;border:2px solid #1A1D2E;margin-left:-6px"></div>
+        <div class="brand-circle" style="background:#6366F1;border:2px solid #1A1D2E;margin-left:-6px"></div>
+      </div>
+    </div>
+    <div class="login-title">Equipo · Calendario</div>
+    <div class="login-sub">Selecciona tu nombre para entrar</div>
+    <div class="login-list" id="login-list">
+      <div class="login-loading">Cargando personas…</div>
+    </div>
+  </div>
+</div>
 
 <div class="loading" id="loading">
   <div class="spinner"></div>
@@ -215,6 +252,11 @@ button{font-family:inherit;cursor:pointer}
       <button onclick="changeYear(1)">›</button>
     </div>
     <div class="sync-badge" id="sync-badge"><div class="sync-dot"></div><span id="sync-txt">Conectando</span></div>
+    <div class="session-bar" id="session-bar" onclick="window._logout()" title="Cerrar sesión">
+      <div class="session-av" id="session-av"></div>
+      <span class="session-name" id="session-name">—</span>
+      <span class="session-out">✕</span>
+    </div>
   </div>
 </nav>
 
@@ -261,6 +303,12 @@ let isDrag=false, dragAct=null, saveTimer=null, zoomLevel=100, isRemoteUpdate=fa
 // Global settings
 let settings = { vacLimit: 22 }; // días de vacaciones por año para todos
 
+// ── Session ────────────────────────────────────────────────────────
+// currentUser = { id, name, color, isAdmin } | null
+let currentUser = null;
+function isAdmin(){ return currentUser && currentUser.isAdmin; }
+function sessionPersonId(){ return currentUser ? currentUser.id : null; }
+
 const PAL=[
   {id:'c0',color:'#E8446A',light:'#C4405A'},{id:'c1',color:'#E8920A',light:'#C47A1A'},
   {id:'c2',color:'#0EA86E',light:'#1A9060'},{id:'c3',color:'#2878D6',light:'#2060C0'},
@@ -301,14 +349,14 @@ function setSyncStatus(s,txt){
 function yearDocId(y){return `year-${y}`;}
 function serializeState(){
   return {
-    persons:persons.map(p=>({...p,vac:[...p.vac],guard:[...p.guard],lib:[...(p.lib||new Set())]})),
+    persons:persons.map(p=>({...p,vac:[...p.vac],guard:[...p.guard],lib:[...(p.lib||new Set())],isAdmin:p.isAdmin||false})),
     holidays, settings, updatedAt:Date.now()
   };
 }
 function deserializeState(data){
   if(!data)return;
   isRemoteUpdate=true;
-  if(data.persons) persons=data.persons.map(p=>({...p,vac:new Set(p.vac||[]),guard:new Set(p.guard||[]),lib:new Set(p.lib||[])}));
+  if(data.persons) persons=data.persons.map(p=>({...p,vac:new Set(p.vac||[]),guard:new Set(p.guard||[]),lib:new Set(p.lib||[]),isAdmin:p.isAdmin||false}));
   if(data.holidays) holidays=data.holidays;
   if(data.settings) settings={...settings,...data.settings};
   isRemoteUpdate=false;
@@ -324,8 +372,8 @@ async function loadYear(y){
       holidays=defaultHolidays(y);
       if(persons.length===0){
         persons=[
-          {id:'p0',name:'Jose Gregorio',color:'#E8446A',light:'#C4405A',vac:new Set(),guard:new Set(),lib:new Set()},
-          {id:'p1',name:'Toni Garcia',  color:'#0EA86E',light:'#1A9060',vac:new Set(),guard:new Set(),lib:new Set()},
+          {id:'p0',name:'Jose Gregorio',color:'#E8446A',light:'#C4405A',vac:new Set(),guard:new Set(),lib:new Set(),isAdmin:true},
+          {id:'p1',name:'Toni Garcia',  color:'#0EA86E',light:'#1A9060',vac:new Set(),guard:new Set(),lib:new Set(),isAdmin:false},
         ];
       } else {
         persons=persons.map(p=>({...p,vac:new Set(),guard:new Set(),lib:new Set()}));
@@ -335,7 +383,7 @@ async function loadYear(y){
     setSyncStatus('synced','Sincronizado');
   }catch(e){console.error(e);setSyncStatus('error','Sin conexión');}
   document.getElementById('loading').classList.add('hidden');
-  render();
+  if(!currentUser){ showLogin(); } else { render(); }
 }
 
 let unsubscribe=null;
@@ -362,7 +410,41 @@ function scheduleSave(){
   },800);
 }
 
-function defaultHolidays(y){
+// ── Login / Session ───────────────────────────────────────────────
+function showLogin(){
+  const overlay=document.getElementById('login-overlay');
+  const list=document.getElementById('login-list');
+  overlay.classList.remove('hidden');
+  list.innerHTML='';
+  if(!persons.length){list.innerHTML='<div class="login-loading">Sin personas configuradas.</div>';return;}
+  persons.forEach(p=>{
+    const div=document.createElement('div');div.className='login-person';
+    div.innerHTML=`<div class="av" style="background:${p.color};width:34px;height:34px;font-size:12px">${ini(p.name)}</div>
+      <span class="lp-name">${p.name}</span>
+      ${p.isAdmin?'<span class="lp-badge">ADMIN</span>':''}`;
+    div.onclick=()=>doLogin(p);
+    list.appendChild(div);
+  });
+}
+function doLogin(p){
+  currentUser={id:p.id,name:p.name,color:p.color,isAdmin:p.isAdmin||false};
+  document.getElementById('login-overlay').classList.add('hidden');
+  // Set session avatar in topnav
+  const av=document.getElementById('session-av');
+  const nm=document.getElementById('session-name');
+  av.style.background=p.color;av.textContent=ini(p.name);
+  nm.textContent=p.name+(p.isAdmin?' ★':'');
+  // Auto-select own person and vac mode
+  activeP=p.id; activeMode='vac';
+  render();
+}
+window._logout=()=>{
+  if(!confirm('¿Cerrar sesión?'))return;
+  currentUser=null;activeP=null;activeMode=null;
+  document.getElementById('session-av').textContent='';
+  document.getElementById('session-name').textContent='—';
+  showLogin();
+};
   return {
     [`${y}-01-01`]:'Año Nuevo',[`${y}-01-06`]:'Epifanía',
     [`${y}-02-17`]:'Carnaval',[`${y}-03-19`]:'San José',
@@ -390,12 +472,18 @@ function renderSidebar(){
   const pl=document.getElementById('plist');pl.innerHTML='';
   persons.forEach(p=>{
     const isAct=activeP===p.id;
+    const isMine=currentUser&&p.id===currentUser.id;
+    const canSelect=isMine||isAdmin();
     const vu=vacUsed(p), vl=vacLeft(p), lu=libUsed(p), ll=libLeft(p);
-    const row=document.createElement('div');row.className='prow'+(isAct?' active':'');
-    row.innerHTML=`<div class="av" style="background:${p.color}">${ini(p.name)}</div><span class="pname">${p.name}</span>`;
-    row.onclick=()=>{activeP=p.id;if(!activeMode)activeMode='vac';renderSidebar();updateHint();};
+    const row=document.createElement('div');
+    row.className='prow'+(isAct?' active':'')+(canSelect?'':' locked');
+    if(!canSelect){row.style.opacity='0.45';row.style.cursor='default';}
+    row.innerHTML=`<div class="av" style="background:${p.color}">${ini(p.name)}</div><span class="pname">${p.name}</span>${!canSelect?'<span style="font-size:10px;color:var(--ink3)">🔒</span>':''}`;
+    if(canSelect){
+      row.onclick=()=>{activeP=p.id;if(!activeMode)activeMode='vac';renderSidebar();updateHint();};
+    }
     pl.appendChild(row);
-    if(isAct){
+    if(isAct&&canSelect){
       const pills=document.createElement('div');pills.className='mpills';
       [['vac','● Vac.'],['guard','◆ Guardia'],['lib','◉ Libranza']].forEach(([m,lbl])=>{
         const pill=document.createElement('button');
@@ -506,6 +594,8 @@ function buildMonth(m){
     cell.addEventListener('mousedown',e=>{
       if(!activeP||!activeMode)return;
       const p=persons.find(x=>x.id===activeP);if(!p)return;
+      // Permission check: only edit own days (or admin edits all)
+      if(!isAdmin()&&currentUser&&p.id!==currentUser.id){return;}
       if(activeMode==='vac'&&(isHol(key)||isWE(key)))return;
       // Check vac limit before adding
       if(activeMode==='vac'&&!p.vac.has(key)){
@@ -531,6 +621,7 @@ function buildMonth(m){
     cell.addEventListener('mouseenter',()=>{
       if(!isDrag||!activeP||!activeMode)return;
       const p=persons.find(x=>x.id===activeP);if(!p)return;
+      if(!isAdmin()&&currentUser&&p.id!==currentUser.id){return;}
       if(activeMode==='vac'&&(isHol(key)||isWE(key)))return;
       if(!p.lib)p.lib=new Set();
       const set=activeMode==='vac'?p.vac:activeMode==='guard'?p.guard:p.lib;
@@ -748,6 +839,10 @@ function renderCfgP(){
     row.innerHTML=`<div class="av" style="background:${p.color}">${ini(p.name)}</div>
       <input class="name-inp" value="${p.name}" onchange="window._renamePerson('${p.id}',this.value)">
       <div style="display:flex;gap:10px;align-items:center;flex-shrink:0">
+        <label title="Administrador" style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:${p.isAdmin?'#6366F1':'var(--ink3)'}">
+          <input type="checkbox" ${p.isAdmin?'checked':''} onchange="window._toggleAdmin('${p.id}',this.checked)" style="accent-color:#6366F1">
+          Admin
+        </label>
         <span style="font-size:12px;font-weight:600;color:${vl<0?'#ef4444':'#C8C6CC'};font-family:'DM Sans',sans-serif;white-space:nowrap">${vu}<span style="font-size:10px;opacity:.6">/${settings.vacLimit} vac</span></span>
         <span style="font-size:12px;font-weight:600;color:${LIB_COLOR};font-family:'DM Sans',sans-serif;white-space:nowrap">${ll} <span style="font-size:10px;font-weight:400">lib. disp.</span></span>
       </div>
@@ -774,38 +869,62 @@ function renderSws(){
 
 // ── CRUD ──────────────────────────────────────────────────────────
 window._setVacLimit=v=>{
+  if(!isAdmin()){return;}
   const n=parseInt(v);if(isNaN(n)||n<1)return;
   settings.vacLimit=n;scheduleSave();renderSidebar();
 };
 window._addPerson=()=>{
+  if(!isAdmin()){return;}
   const name=document.getElementById('nname').value.trim();if(!name)return;
   const pal=PAL.find(p=>p.id===selColor)||PAL[0];
-  persons.push({id:'p'+Date.now(),name,color:pal.color,light:pal.light,vac:new Set(),guard:new Set(),lib:new Set()});
+  persons.push({id:'p'+Date.now(),name,color:pal.color,light:pal.light,vac:new Set(),guard:new Set(),lib:new Set(),isAdmin:false});
   document.getElementById('nname').value='';
   selColor=PAL[persons.length%PAL.length].id;
   scheduleSave();render();
 };
 window._delPerson=id=>{
+  if(!isAdmin()){return;}
   if(!confirm('¿Eliminar esta persona?'))return;
   persons=persons.filter(p=>p.id!==id);
   if(activeP===id){activeP=null;activeMode=null;}
   scheduleSave();render();
 };
 window._renamePerson=(id,name)=>{
+  if(!isAdmin()){return;}
   const p=persons.find(x=>x.id===id);if(p&&name.trim())p.name=name.trim();
   scheduleSave();renderSidebar();
 };
+window._toggleAdmin=(id,val)=>{
+  if(!isAdmin()){return;}
+  const p=persons.find(x=>x.id===id);if(!p)return;
+  // Prevent removing admin from yourself if you are the only admin
+  const admins=persons.filter(x=>x.isAdmin);
+  if(!val&&p.id===currentUser.id&&admins.length<=1){
+    alert('⚠️ Debe haber al menos un administrador.');
+    renderCfgP();return;
+  }
+  p.isAdmin=val;scheduleSave();renderCfgP();
+};
 window._addHoliday=()=>{
+  if(!isAdmin()){return;}
   const date=document.getElementById('hdate').value;
   const name=document.getElementById('hname').value.trim()||'Festivo';
   if(!date)return;holidays[date]=name;
   document.getElementById('hname').value='';
   scheduleSave();render();
 };
-window._delHoliday=date=>{delete holidays[date];scheduleSave();render();};
+window._delHoliday=date=>{
+  if(!isAdmin()){return;}
+  delete holidays[date];scheduleSave();render();
+};
 
 // ── Tab / Year ────────────────────────────────────────────────────
 window.setTab=t=>{
+  // Non-admins cannot access config tab
+  if(t==='cfg'&&!isAdmin()){
+    alert('⚠️ Solo el administrador puede acceder a la configuración.');
+    return;
+  }
   tab=t;
   ['cal','res','cfg'].forEach(id=>{
     document.getElementById('tab-'+id).className='nav-tab'+(t===id?' active':'');
@@ -819,6 +938,9 @@ window.changeYear=d=>{year+=d;document.getElementById('ylbl').textContent=year;l
 // ── Render ────────────────────────────────────────────────────────
 function render(){
   renderSidebar();updateHint();updateBrandCircles();
+  // Show config tab only to admins
+  const cfgTab=document.getElementById('tab-cfg');
+  if(cfgTab){cfgTab.style.display=isAdmin()?'':'none';}
   const main=document.getElementById('main');
   if(tab==='cal'){
     main.innerHTML='<div class="cal-zoom-wrap" id="cal-zoom-wrap"><div class="cal-grid" id="cgrid"></div></div>';
